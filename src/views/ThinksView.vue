@@ -14,7 +14,7 @@ const thinkList = [
 
 <template>
   <div class="thinks">
-    blogs
+    thinks
   </div>
 </template>
 
