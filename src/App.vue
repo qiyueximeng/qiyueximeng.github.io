@@ -16,7 +16,7 @@ const SOLUTION_PATH = '/practice/leetcode-solution';
       <nav>
         <RouterLink to="/">Home</RouterLink>
         <RouterLink to="/blogs">文章</RouterLink>
-        <RouterLink to="/practice/data-structure">练习</RouterLink>
+        <RouterLink to="/practice">练习</RouterLink>
         <RouterLink to="/thinks">想法</RouterLink>
       </nav>
     </div>

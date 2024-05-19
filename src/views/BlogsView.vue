@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { RouterLink } from 'vue-router';
+import List from '../components/List.vue';
 
 const list = ref([
   {
@@ -86,34 +86,11 @@ const list = ref([
 
 <template>
   <main class="blogs">
-    <RouterLink class="blog-item" v-for="item of list" :key="item.title" :to="item.path">
-      <h3>{{ item.title }}</h3>
-      <div>{{ item.date }}</div>
-      <div>{{  item.desc }}</div>
-    </RouterLink>
+    <List :list />
   </main>
 </template>
 
 <style scoped>
 @media (min-width: 1024px) {
-  .blogs {
-    max-height: 80vh;
-    overflow-y: auto;
-  }
-
-  .blog-item {
-    display: block;
-    color: var(--color-text);
-    margin: 0 0.5rem;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid;
-  }
-  .blog-item:last-child {
-    border-bottom: 0;
-  }
-  .blog-item:hover {
-    transform: scale(1.01);
-    background-color: var(--color-background);
-  }
 }
 </style>
