@@ -1,3 +1,13 @@
+export interface IDeposit {
+  depositCount: number; // 存款
+  depositRate: number; // 存款利率
+}
+
+export interface IConsume {
+  consumeCount: number; // 消耗
+  consumeRate: number; // 消耗通胀率
+}
+
 // https://www.kylc.com/stats/global/yearly_per_country/g_inflation_consumer_prices/chn.html
 const inflation = [
   0.35, // 2000
@@ -29,191 +39,107 @@ const inflation = [
 const normalRate = 0.1;
 const normalCount = Math.ceil(inflation.length * normalRate);
 const normalInflation = Array.from(inflation).sort().slice(normalCount, inflation.length - normalCount);
-const inflationRateAvg = (normalInflation.reduce((res, item) => res + item, 0) / normalInflation.length / 100 + 1).toFixed(4);
+export const inflationRateAvg = +(normalInflation.reduce((res, item) => res + item, 0) / normalInflation.length / 100 + 1).toFixed(4);
 // 平均存款利率，以大额存单估算
-const depositInterestRateAvg = 1.03;
+export const depositInterestRateAvg = 1.03;
 
 
 // 计算阶乘
-function factorial(multiple: number, count = 1) {
+export function factorial(multiple: number, count = 1) {
   let base = 1;
   for (let i = 0; i < count; i++) {
-    base = base * multiple;
+    base *= multiple;
   }
   return base;
 }
 
-// 计算包含通胀总价值
-function calcConsume(consume: number, multiple: number, count: number) {
+// 计算包含通胀总消耗
+export function calcConsume(consume: number, rate: number, count: number) {
   let base = 0;
   for (let i = 1; i <= count; i++) {
-    base += consume * factorial(multiple, i);
+    base += consume;
+    consume *= rate;
   }
   return base;
 }
 
 /**
  * 计算存款消耗情况
- * @param {number} deposit 存款
- * @param {number} depositMultiple 平均存款利率
- * @param {number} consume 每年消耗
- * @param {number} consumeMultiple 平均每年通胀率
- * @param {number} count 期望年限
- * @returns {{ years: number; surplus: number }} 返回结余金额和已用年限
+ * 返回结余金额和经过年限
  */
-function calcDepositConsume(deposit: number, depositMultiple: number, consume: number, consumeMultiple: number, count: number) {
-  for (let i = 1; i <= count; i++) {
-    if (deposit < consume) return { years: i - 1, surplus: deposit };
-    deposit -= consume;
-    deposit *= depositMultiple;
-    // console.log(`>>> 第 ${i} 年消耗 ${(consume).toFixed(0)} 结余 ${(deposit).toFixed(0)} ${Math.floor(deposit / 10000)} 万`)
-    consume *= consumeMultiple;
+function calcDepositConsume(
+  { depositCount, depositRate, consumeCount, consumeRate, count }: IDeposit & IConsume & { count: number; }
+) {
+  let i = 0;
+  while (i < count) {
+    if (depositCount < 0) {
+      break;
+    }
+    depositCount -= consumeCount;
+    depositCount *= depositRate;
+    // console.log(`>>> 第 ${i + 1} 年消耗 ${(consume).toFixed(0)} 结余 ${(deposit).toFixed(0)} ${Math.floor(deposit / 10000)} 万`)
+    consumeCount *= consumeRate;
+    i++;
   }
-  return { years: count, surplus: deposit };
+
+  return { count: i, depositCount };
 }
 
 /**
- * 计算存款可用年限
- * @param {number} deposit 存款
- * @param {number} depositMultiple 平均存款利率
- * @param {number} consume 每年消耗
- * @param {number} consumeMultiple 平均每年通胀
- * @returns {{ years: number; surplus: number }} 返回年限和结余金额, 年限上限为 100 年
+ * 固定年限和每年消耗，计算需要多少存款才能支撑
+ * needKeepDeposit: 是否在最后需要保本
  */
-function calcDepositConsumeYear(deposit: number, depositMultiple: number, consume: number, consumeMultiple: number) {
-  let years = 0;
-  while (years < 100) {
-    if (deposit < consume) return { years, surplus: deposit };
-    deposit -= consume;
-    deposit *= depositMultiple;
-    consume *= consumeMultiple;
-    years++;
-  }
-  return { years, surplus: deposit };
-}
-
-function dichotomyCalcDeposit(depositMultiple: number, consume: number, consumeMultiple: number, count: number) {
-  let value = consume;
+export function dichotomyCalcDeposit(
+  { depositRate, consumeCount, consumeRate, count }: IConsume & { depositRate: number; count: number; },
+  needKeepDeposit = false,
+) {
   const GAP = 1000;
-  const range = [value, Infinity];
-  while (true) {
-    const { years } = calcDepositConsume(value, depositMultiple, consume, consumeMultiple, count);
-    // console.log(`>>> 价值 ${(value).toFixed(0)} 结余 ${(res).toFixed(0)}`);
-    if (years < count) {
-      range[0] = value;
-      if (range[1] === Infinity) {
-        value *= 2;
-      } else {
-        value = range[0] + (range[1] - range[0]) / 2;
-      }
-    } else {
-      if (range[1] - range[0] <= GAP) {
-        return value;
-      } else {
-        range[1] = value;
-        value = range[0] + (range[1] - range[0]) / 2;
-      }
+  const range = [consumeCount, Infinity];
+  let endDeposit = 0;
+  let depositCount = consumeCount;
+  while (range[1] - range[0] > GAP) {
+    depositCount = range[0] + range[1] === Infinity ? range[0] : (range[1] - range[0]) / 2;
+    if (needKeepDeposit) {
+      endDeposit = depositCount;
+    }
+    const { depositCount: deposit } = calcDepositConsume({ depositCount, depositRate, consumeCount, consumeRate, count });
+    if (deposit <= endDeposit) {
+      range[0] = depositCount;
+    } else if(range[1] - range[0] > GAP) {
+      range[1] = depositCount;
     }
   }
+  return depositCount;
 }
 
-function dichotomyCalcDeposit2(depositMultiple: number, consume: number, consumeMultiple: number, count: number) {
-  let value = consume;
-  const GAP = 1000;
-  const range = [value, Infinity];
-  while (true) {
-    const { years, surplus } = calcDepositConsume(value, depositMultiple, consume, consumeMultiple, count);
-    // console.log(`>>> 价值 ${(value).toFixed(0)} 结余 ${(res).toFixed(0)}`);
-    if (years < count || surplus < value) {
-      range[0] = value;
-      if (range[1] === Infinity) {
-        value *= 2;
-      } else {
-        value = range[0] + (range[1] - range[0]) / 2;
-      }
-    } else {
-      if (range[1] - range[0] <= GAP) {
-        return value;
-      } else {
-        range[1] = value;
-        value = range[0] + (range[1] - range[0]) / 2;
-      }
-    }
-  }
-}
-
-function dichotomyCalcConsume(deposit: number, depositMultiple: number, consumeMultiple: number, count: number) {
-  let value = deposit;
+/**
+ * 固定年限和存款，计算每年能使用多少钱
+ * needKeepDeposit: 是否在最后需要保本
+ */
+export function dichotomyCalcConsume(
+  { depositCount, depositRate, consumeRate, count }: IDeposit & { consumeRate: number; count: number; },
+  needKeepDeposit = false,
+) {
+  const range = [0, depositCount];
   const GAP = 100;
-  const range = [0, value];
-  while (true) {
-    const { years } = calcDepositConsume(deposit, depositMultiple, value, consumeMultiple, count);
-    if (years < count) {
-      range[1] = value;
-      value = range[0] + (range[1] - range[0]) / 2;
-    } else {
-      if (range[1] - range[0] <= GAP) {
-        return value;
-      } else {
-        range[0] = value;
-        value = range[0] + (range[1] - range[0]) / 2;
-      }
+  const endDeposit = needKeepDeposit ? depositCount : 0;
+  let consumeCount = depositCount;
+  let deposit = 0;
+  while (range[1] - range[0] > GAP) {
+    consumeCount = range[0] + (range[1] - range[0]) / 2;
+    const res = calcDepositConsume({
+      depositCount,
+      depositRate,
+      consumeCount, 
+      consumeRate,
+      count
+    });
+    deposit = res.depositCount;
+    if (deposit <= endDeposit) {
+      range[1] = consumeCount;
+    } else if (range[1] - range[0] > GAP) {
+      range[0] = consumeCount;
     }
   }
-}
-
-function dichotomyCalcConsume2(deposit: number, depositMultiple: number, consumeMultiple: number, count: number) {
-  let value = deposit;
-  const GAP = 100;
-  const range = [0, value];
-  while (true) {
-    const { years, surplus } = calcDepositConsume(deposit, depositMultiple, value, consumeMultiple, count);
-    if (years < count || surplus < deposit) {
-      range[1] = value;
-      value = range[0] + (range[1] - range[0]) / 2;
-    } else {
-      if (range[1] - range[0] <= GAP) {
-        return value;
-      } else {
-        range[0] = value;
-        value = range[0] + (range[1] - range[0]) / 2;
-      }
-    }
-  }
-}
-
-function main() {
-  const endYear = 2084;
-  const startYear = 2024;
-  const count = endYear - startYear;
-
-  const deposit = 629 * 10000;
-  const consume = 10 * 10000;
-  const consumeMultiple = 1.025;
-  const depositMultiple = 1.03;
-
-  /* const res = calcConsume(consume, consumeMultiple, count);
-  console.log('>>> 总消耗：', res, Math.ceil(res / 10000), '万');
-
-  const value = deposit * factorial(depositMultiple, count);
-  console.log('>>> 总价值：', value, Math.ceil(value / 10000), '万'); */
-
-  const { years: years2, surplus: surplus2 } = calcDepositConsume(deposit, depositMultiple, consume, consumeMultiple, count);
-  console.log(`>>> ${deposit} 每年消耗 ${consume}, ${years2} 年预估结余: ${surplus2} ${Math.floor(surplus2 / 10000)} 万`);
-
-  const value3 = dichotomyCalcDeposit(depositMultiple, consume, consumeMultiple, count);
-  console.log(`>>> 每年消耗 ${consume}, ${count} 年不保本需: ${(value3).toFixed(0)} ${Math.ceil(value3 / 10000)} 万`);
-
-  const value4 = dichotomyCalcDeposit2(depositMultiple, consume, consumeMultiple, count);
-  console.log(`>>> 每年消耗 ${consume}, ${count} 年保本需: ${(value4).toFixed(0)} ${Math.ceil(value4 / 10000)} 万`);
-
-  const deposit5 = 50 * 10000;
-  const value5 = dichotomyCalcConsume(deposit5, depositMultiple, consumeMultiple, count);
-  console.log(`>>> ${deposit5} ${count} 年不保本, 每年可用: ${(value5).toFixed(0)} 元`);
-
-  const value6 = dichotomyCalcConsume2(deposit5, depositMultiple, consumeMultiple, count);
-  console.log(`>>> ${deposit5} ${count} 年保本, 每年可用: ${(value6).toFixed(0)} 元`);
-
-  const { years: years7, surplus: surplus7 } = calcDepositConsumeYear(deposit, depositMultiple, consume, consumeMultiple);
-  console.log(`>>> ${deposit} 每年消耗 ${consume}, ${years7} 年预估结余: ${surplus7} ${Math.floor(surplus7 / 10000)} 万`);
+  return { consumeCount, status: deposit > endDeposit };
 }
