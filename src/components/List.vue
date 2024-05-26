@@ -12,9 +12,5 @@ import ListItem from './ListItem.vue';
 
 <style scoped>
   @media (min-width: 1024px) {
-    .list {
-      max-height: 80vh;
-      overflow-y: auto;
-    }
   }
 </style>

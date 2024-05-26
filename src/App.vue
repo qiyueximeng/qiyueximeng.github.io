@@ -9,7 +9,7 @@ import { RouterLink, RouterView } from 'vue-router'
     <nav>
       <RouterLink to="/blogs">文章</RouterLink>
       <RouterLink to="/practice">练习</RouterLink>
-      <RouterLink to="/thinks">想法</RouterLink>
+      <!-- <RouterLink to="/thinks">想法</RouterLink> -->
     </nav>
   </header>
 
@@ -18,7 +18,11 @@ import { RouterLink, RouterView } from 'vue-router'
 
 <style scoped>
 header {
+  position: sticky;
+  top: 0;
   padding: 1rem 0;
+  background-color: var(--color-background);
+  z-index: 999;
 }
 
 .logo-link {

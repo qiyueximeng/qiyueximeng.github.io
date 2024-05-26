@@ -11,25 +11,16 @@ defineProps(['item']);
 </template>
 
 <style scoped>
+.item {
+  display: block;
+  position: relative;
+  color: var(--color-text);
+  margin: 1rem 0;
+  padding: 0 1rem;
+}
 @media (min-width: 1024px) {
-  .item {
-    display: block;
-    position: relative;
-    color: var(--color-text);
-    margin: 0.5rem 0;
-    padding: 0 0.5rem;
-  }
   .item:hover {
-    transform: translate(1%, 0);
-    background-color: var(--color-background);
-  }
-  .item::after {
-    content: ' ';
-    position: absolute;
-    top: 0;
-    left: 0;
-    border-left: 1px solid;
-    height: 100%;
+    background-color: #1E1E1E;
   }
 }
 </style>

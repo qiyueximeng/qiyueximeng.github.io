@@ -13,11 +13,10 @@ defineProps(['id']);
 </template>
 
 <style scoped>
+iframe {
+  width: 100%;
+  height: calc(100vh - 7rem);
+}
 @media (min-width: 1024px) {
-  iframe {
-    width: 100%;
-    height: 80vh;
-    background-color: var(--color-background);
-  }
 }
 </style>
